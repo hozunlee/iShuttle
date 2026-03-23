@@ -30,7 +30,7 @@ export default function ReportCard({ report, poseSummary, score }: Props) {
           </div>
         </div>
         <p className="mt-3 text-lg font-semibold">
-          {score.us > score.them ? "🏆 승리" : "💪 패배"}
+          {score.us > score.them ? "🏆 승리" : score.us === score.them ? "🤝 무승부" : "💪 패배"}
         </p>
       </div>
 

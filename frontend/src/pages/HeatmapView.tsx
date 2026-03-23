@@ -29,27 +29,31 @@ export default function HeatmapView() {
       {/* 포메이션 통계 */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h3 className="text-lg font-semibold text-white mb-4">포메이션 분포</h3>
-        <div className="space-y-3">
-          {Object.entries(formationCounts).map(([key, count]) => {
-            const pct = Math.round((count / totalRallies) * 100);
-            return (
-              <div key={key}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-300">{FORMATION_LABEL[key] || key}</span>
-                  <span className="text-gray-400">
-                    {count}랠리 ({pct}%)
-                  </span>
+        {totalRallies === 0 ? (
+          <p className="text-center text-gray-500 py-4">랠리 데이터가 없습니다</p>
+        ) : (
+          <div className="space-y-3">
+            {Object.entries(formationCounts).map(([key, count]) => {
+              const pct = Math.round((count / totalRallies) * 100);
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-300">{FORMATION_LABEL[key] || key}</span>
+                    <span className="text-gray-400">
+                      {count}랠리 ({pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="h-full bg-brand-500 rounded-full"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="h-full bg-brand-500 rounded-full"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
