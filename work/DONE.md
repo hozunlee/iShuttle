@@ -4,6 +4,48 @@
 
 ---
 
+## FE_004 + FE_005 | 랠리 북마크 & 연습 모드
+
+> 완료: 2026-03-25
+> 담당: FE
+
+### 작업 내용
+
+- `bookmarkStore.ts` — Zustand + localStorage persist (Set 직렬화)
+- `RallyCard.tsx` — ☆/★ 토글 버튼 추가
+- `RallyView.tsx` — "★ 저장됨" 필터 추가
+- `PracticeView.tsx` — 북마크 랠리 루프 재생 전용 뷰 (신규)
+- `Results.tsx` — "★ 연습" 탭 추가 (북마크 개수 실시간 표시)
+- `bookmarkStore.test.ts` — 8개 테스트
+
+### 최종 결과
+
+- Frontend: **76 / 76 passed**
+
+### 배경
+
+Office Hours 세션 결론: "배드민턴 쉐도잉 앱"
+좋은 랠리를 북마크 → 루프 재생 → 반복 체화 (10개 중 1개 → 7개)
+
+---
+
+## FE_003 | Results 화면 렌더링 버그 수정
+
+> 완료: 2026-03-24
+> 담당: FE
+
+### 작업 내용
+
+- `HeatmapView.tsx` — rallies 0개일 때 division by zero 방지, 빈 상태 메시지
+- `ReportCard.tsx` — 무승부(us === them) 조건 추가
+- `results.test.ts` — 포메이션 퍼센트 / 스코어 라벨 / 랠리 필터 테스트 14개
+
+### 최종 결과
+
+- Frontend: **68 / 68 passed**
+
+---
+
 ## BE_002 + FE_002 | TDD 기반 테스트 스위트 구축
 
 > 완료: 2026-03-23
