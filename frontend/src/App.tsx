@@ -5,6 +5,7 @@ import Results from "./pages/Results";
 import RallyView from "./pages/RallyView";
 import HeatmapView from "./pages/HeatmapView";
 import ReportView from "./pages/ReportView";
+import PracticeView from "./pages/PracticeView";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="rallies" element={<RallyView />} />
           <Route path="heatmap" element={<HeatmapView />} />
           <Route path="report" element={<ReportView />} />
+          <Route path="practice" element={<PracticeView />} />
         </Route>
       </Routes>
     </BrowserRouter>

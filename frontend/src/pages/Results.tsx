@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useParams, useNavigate } from "react-router-dom";
 import { useJobStore } from "../store/jobStore";
+import { useBookmarkStore } from "../store/bookmarkStore";
 import { useEffect } from "react";
 import { getResults } from "../api/results";
 import { mockReport } from "../api/mock";
@@ -13,6 +14,7 @@ const TAB_INACTIVE = "text-gray-400 hover:text-gray-200 hover:bg-gray-700";
 export default function Results() {
   const { jobId } = useParams<{ jobId: string }>();
   const { result, setDone } = useJobStore();
+  const { count: bookmarkCount } = useBookmarkStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,6 +80,14 @@ export default function Results() {
             className={({ isActive }) => `${TAB_BASE} ${isActive ? TAB_ACTIVE : TAB_INACTIVE}`}
           >
             AI 리포트
+          </NavLink>
+          <NavLink
+            to={`/results/${jobId}/practice`}
+            className={({ isActive }) =>
+              `${TAB_BASE} ${isActive ? "bg-yellow-600 text-white" : TAB_INACTIVE}`
+            }
+          >
+            ★ 연습{bookmarkCount() > 0 ? ` (${bookmarkCount()})` : ""}
           </NavLink>
         </div>
       </nav>

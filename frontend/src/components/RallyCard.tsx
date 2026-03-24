@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Rally } from "../types/api";
+import { useBookmarkStore } from "../store/bookmarkStore";
 
 interface Props {
   rally: Rally;
@@ -25,6 +26,8 @@ const RESULT_LABEL: Record<string, string> = {
 
 export default function RallyCard({ rally }: Props) {
   const [showShort, setShowShort] = useState(false);
+  const { isBookmarked, toggle } = useBookmarkStore();
+  const bookmarked = isBookmarked(rally.id);
   const duration = (rally.timestamp.end_sec - rally.timestamp.start_sec).toFixed(1);
 
   return (
@@ -59,9 +62,20 @@ export default function RallyCard({ rally }: Props) {
           <span className="text-gray-400 text-sm font-mono">
             #{String(rally.id).padStart(3, "0")}
           </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${RESULT_COLOR[rally.result]}`}>
-            {RESULT_LABEL[rally.result]}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${RESULT_COLOR[rally.result]}`}>
+              {RESULT_LABEL[rally.result]}
+            </span>
+            <button
+              onClick={() => toggle(rally.id)}
+              title={bookmarked ? "연습 목록에서 제거" : "연습 목록에 추가"}
+              className={`text-xl leading-none transition-colors ${
+                bookmarked ? "text-yellow-400" : "text-gray-600 hover:text-yellow-400"
+              }`}
+            >
+              {bookmarked ? "★" : "☆"}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center">

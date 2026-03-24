@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useJobStore } from "../store/jobStore";
+import { useBookmarkStore } from "../store/bookmarkStore";
 import RallyCard from "../components/RallyCard";
 import type { Rally } from "../types/api";
 
-type Filter = "all" | "us" | "them";
+type Filter = "all" | "us" | "them" | "bookmarked";
 
 export default function RallyView() {
   const { result } = useJobStore();
+  const { isBookmarked, count: bookmarkCount } = useBookmarkStore();
   const [filter, setFilter] = useState<Filter>("all");
   const [sortByScore, setSortByScore] = useState(false);
 
@@ -14,7 +16,10 @@ export default function RallyView() {
 
   const scoreRally = (r: Rally) => r.strokes * 2 + (r.result === "us" ? 10 : 0);
 
-  let rallies = result.rallies.filter((r) => filter === "all" || r.result === filter);
+  let rallies = result.rallies.filter((r) => {
+    if (filter === "bookmarked") return isBookmarked(r.id);
+    return filter === "all" || r.result === filter;
+  });
   if (sortByScore) {
     rallies = [...rallies].sort((a, b) => scoreRally(b) - scoreRally(a));
   }
@@ -24,14 +29,16 @@ export default function RallyView() {
       {/* 필터 & 정렬 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2">
-          {(["all", "us", "them"] as Filter[]).map((f) => (
+          {(["all", "us", "them", "bookmarked"] as Filter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors
-                ${filter === f ? "bg-brand-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
+                ${filter === f
+                  ? f === "bookmarked" ? "bg-yellow-600 text-white" : "bg-brand-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
             >
-              {f === "all" ? "전체" : f === "us" ? "득점" : "실점"}
+              {f === "all" ? "전체" : f === "us" ? "득점" : f === "them" ? "실점" : `★ 저장됨 (${bookmarkCount()})`}
             </button>
           ))}
         </div>
