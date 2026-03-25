@@ -24,18 +24,20 @@ MAX_GAP_FRAMES = 30       # 최대 보간 허용 프레임
 HIT_SPEED_THRESHOLD = 5.0 # 서브 준비 구분 속도 임계값 (픽셀/프레임)
 
 
-def detect_rallies(video_path: str, court_data: dict) -> list[dict]:
+def detect_rallies(video_path: str, court_data: dict, our_side: str = "bottom") -> list[dict]:
     """
     TrackNetV3로 셔틀콕을 추적하고 랠리를 분리한다.
 
+    Args:
+        our_side: "bottom" (기본) | "top" — 화면에서 우리 팀이 있는 위치
     Fallback: TrackNetV3 실패 시 OpenCV 광학 플로우 → 최종 실패 시 mock 반환
     """
-    logger.info(f"[rally] 시작 | {video_path}")
+    logger.info(f"[rally] 시작 | {video_path} | our_side={our_side}")
 
     try:
         positions = _run_tracknet(video_path)
         positions = interpolate_positions(positions, max_gap=MAX_GAP_FRAMES)
-        rallies = _split_rallies(positions, court_data, video_path)
+        rallies = _split_rallies(positions, court_data, video_path, our_side)
         logger.info(f"[rally] TrackNetV3 완료: {len(rallies)}개 랠리")
         return rallies
     except Exception as e:
@@ -43,7 +45,7 @@ def detect_rallies(video_path: str, court_data: dict) -> list[dict]:
 
     try:
         positions = _optical_flow_fallback(video_path)
-        rallies = _split_rallies(positions, court_data, video_path)
+        rallies = _split_rallies(positions, court_data, video_path, our_side)
         if len(rallies) == 0:
             logger.warning("[rally] 광학 플로우 0개 → mock으로 대체")
             return _mock_rallies(video_path)
@@ -145,7 +147,7 @@ def interpolate_positions(
     return result
 
 
-def _split_rallies(positions: list[tuple], court_data: dict, video_path: str) -> list[dict]:
+def _split_rallies(positions: list[tuple], court_data: dict, video_path: str, our_side: str = "bottom") -> list[dict]:
     """셔틀콕 위치 시퀀스에서 랠리 시작/끝을 분리"""
     import cv2
 
@@ -206,6 +208,7 @@ def _split_rallies(positions: list[tuple], court_data: dict, video_path: str) ->
                         rally_positions,
                         {"timestamp": {"start_sec": rally_start_frame / 30.0, "end_sec": end_frame / 30.0}},
                         court_data,
+                        our_side=our_side,
                     )
 
                     phase = _calc_phase(us_score, them_score)
@@ -235,14 +238,15 @@ def assign_rally_result(
     positions: list[tuple],
     rally: dict,
     court_data: dict,
+    our_side: str = "bottom",
 ) -> str:
     """
     셔틀콕 위치 시퀀스와 코트 데이터로 랠리 결과를 판별한다.
 
-    판별 기준 (촬영 기준: 카메라가 우리 팀 후방):
-    - 화면 상단(y → 0) 아웃 → "them" (상대 진영 아웃 = 우리 실점)
-    - 화면 하단(y → frame_height) 아웃 → "us" (우리 진영 아웃 = 상대 실점)
-    - 판별 불가 → "neutral"
+    Args:
+        our_side: "bottom" | "top" — 화면에서 우리 팀 위치
+            "bottom": 카메라가 우리 팀 후방 (기본)
+            "top": 카메라가 상대 팀 후방
 
     Returns:
         "us" | "them" | "neutral"
@@ -254,10 +258,6 @@ def assign_rally_result(
     top_threshold = frame_height * 0.15
     bottom_threshold = frame_height * 0.85
 
-    # 랠리 구간 내 감지된 마지막 위치 찾기
-    start_sec = rally["timestamp"]["start_sec"]
-    end_sec = rally["timestamp"]["end_sec"]
-
     detected = [p for p in positions if p[3] > 0]
     if not detected:
         return "neutral"
@@ -265,20 +265,24 @@ def assign_rally_result(
     last = detected[-1]
     last_y = last[2]
 
-    # 마지막 이동 방향 (최근 5프레임 평균)
     recent = detected[-5:] if len(detected) >= 5 else detected
     if len(recent) >= 2:
         dy = recent[-1][2] - recent[0][2]
     else:
         dy = 0.0
 
-    # 상단 아웃: 마지막 y가 상단 임계값 아래이고, 위쪽으로 이동 중
-    if last_y < top_threshold and dy <= 0:
-        return "them"
-
-    # 하단 아웃: 마지막 y가 하단 임계값 위이고, 아래쪽으로 이동 중
-    if last_y > bottom_threshold and dy >= 0:
-        return "us"
+    # our_side="bottom": 우리 팀이 하단 — 하단 아웃 = 우리 득점
+    # our_side="top": 우리 팀이 상단 — 상단 아웃 = 우리 득점 (반전)
+    if our_side == "bottom":
+        if last_y < top_threshold and dy <= 0:
+            return "them"
+        if last_y > bottom_threshold and dy >= 0:
+            return "us"
+    else:  # "top"
+        if last_y < top_threshold and dy <= 0:
+            return "us"
+        if last_y > bottom_threshold and dy >= 0:
+            return "them"
 
     return "neutral"
 

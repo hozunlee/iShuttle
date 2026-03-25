@@ -83,7 +83,8 @@ async def run_pipeline(
         # ③ 셔틀콕 추적 & 랠리 분리
         await _push_progress(job_id, 35, "셔틀콕 추적 & 랠리 분리 중...", jobs, ws_subscribers)
         from pipeline.rally import detect_rallies
-        rallies = await _run_sync(detect_rallies, video_path, court_data)
+        our_side = game_config.get("our_side", "bottom")
+        rallies = await _run_sync(detect_rallies, video_path, court_data, our_side)
         logger.info(f"[pipeline] ③ rally 완료: {len(rallies)}개 랠리")
         await _push_progress(job_id, 55, f"랠리 {len(rallies)}개 감지 완료", jobs, ws_subscribers)
 

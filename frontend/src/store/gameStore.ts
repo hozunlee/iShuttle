@@ -14,6 +14,7 @@ const DEFAULT_CONFIG: GameConfig = {
   my_player: "A1",
   partner: "A2",
   rule_mode: "amateur",
+  our_side: "bottom",
 };
 
 export const useGameStore = create<GameStore>((set) => ({

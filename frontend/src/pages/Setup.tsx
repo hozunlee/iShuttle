@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useJobStore } from "../store/jobStore";
@@ -8,12 +8,41 @@ import { mockAnalyze } from "../api/mock";
 
 const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === "true";
 
+function useVideoSnapshot(videoFile: File | null): string | null {
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!videoFile) { setSnapshot(null); return; }
+
+    const url = URL.createObjectURL(videoFile);
+    const video = document.createElement("video");
+    video.src = url;
+    video.currentTime = 5;
+
+    video.onseeked = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")!.drawImage(video, 0, 0);
+      setSnapshot(canvas.toDataURL("image/jpeg", 0.8));
+      URL.revokeObjectURL(url);
+    };
+    video.onerror = () => { setSnapshot(null); URL.revokeObjectURL(url); };
+    video.load();
+
+    return () => { URL.revokeObjectURL(url); };
+  }, [videoFile]);
+
+  return snapshot;
+}
+
 export default function Setup() {
   const navigate = useNavigate();
   const { config, videoFile, videoFileName, setConfig, setVideoFile } = useGameStore();
   const { setJob, setError } = useJobStore();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const snapshot = useVideoSnapshot(videoFile);
 
   const canSubmit = videoFile !== null;
 
@@ -66,6 +95,52 @@ export default function Setup() {
             fileName={videoFileName}
           />
         </div>
+
+        {/* 팀 위치 지정 (스냅샷 있을 때만) */}
+        {snapshot && (
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-sm font-semibold text-gray-300">우리 팀이 어느 쪽인가요?</p>
+              <p className="text-xs text-gray-500 mt-0.5">영상 5초 지점 기준</p>
+            </div>
+
+            <div className="relative">
+              <img src={snapshot} alt="영상 스냅샷" className="w-full object-cover" />
+
+              {/* 상단 오버레이 */}
+              <button
+                onClick={() => setConfig({ our_side: "top" })}
+                className={`absolute top-0 left-0 right-0 h-1/2 flex items-center justify-center transition-colors ${
+                  config.our_side === "top"
+                    ? "bg-brand-600/60 border-b-2 border-brand-400"
+                    : "bg-black/20 hover:bg-brand-600/30"
+                }`}
+              >
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                  config.our_side === "top" ? "bg-brand-600 text-white" : "bg-black/50 text-gray-300"
+                }`}>
+                  {config.our_side === "top" ? "✓ 우리 팀" : "상단"}
+                </span>
+              </button>
+
+              {/* 하단 오버레이 */}
+              <button
+                onClick={() => setConfig({ our_side: "bottom" })}
+                className={`absolute bottom-0 left-0 right-0 h-1/2 flex items-center justify-center transition-colors ${
+                  config.our_side === "bottom"
+                    ? "bg-brand-600/60 border-t-2 border-brand-400"
+                    : "bg-black/20 hover:bg-brand-600/30"
+                }`}
+              >
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                  config.our_side === "bottom" ? "bg-brand-600 text-white" : "bg-black/50 text-gray-300"
+                }`}>
+                  {config.our_side === "bottom" ? "✓ 우리 팀" : "하단"}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 게임 설정 */}
         <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">

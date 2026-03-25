@@ -77,4 +77,5 @@ export interface GameConfig {
   my_player: "A1" | "A2";
   partner: "A1" | "A2";
   rule_mode: "amateur" | "bwf_21";
+  our_side: "top" | "bottom";
 }
