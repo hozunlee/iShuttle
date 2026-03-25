@@ -1,9 +1,87 @@
 import { useState } from "react";
 import type { Rally } from "../types/api";
 import { useBookmarkStore } from "../store/bookmarkStore";
+import { submitReport } from "../api/report";
 
 interface Props {
   rally: Rally;
+  jobId: string;
+}
+
+const REPORT_REASONS = [
+  { value: "non_game", label: "게임 외 구간 (준비운동, 인터벌 등)" },
+  { value: "boundary_error", label: "랠리 경계 오류 (시작/끝 시간 잘못됨)" },
+  { value: "score_error", label: "득점 판정 오류 (득점/실점 반전)" },
+  { value: "other", label: "기타" },
+];
+
+function ReportModal({
+  rallyId,
+  jobId,
+  onClose,
+  onDone,
+}: {
+  rallyId: number;
+  jobId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState("non_game");
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await submitReport({ rally_id: rallyId, job_id: jobId, reason, comment });
+      onDone();
+    } catch {
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-200">랠리 #{String(rallyId).padStart(3, "0")} 신고</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">×</button>
+        </div>
+
+        <div className="space-y-2">
+          {REPORT_REASONS.map((r) => (
+            <label key={r.value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="reason"
+                value={r.value}
+                checked={reason === r.value}
+                onChange={() => setReason(r.value)}
+                className="accent-brand-500"
+              />
+              <span className="text-sm text-gray-300">{r.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="추가 설명 (선택)"
+          rows={2}
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none"
+        />
+
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="w-full py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold disabled:opacity-50"
+        >
+          {submitting ? "전송 중..." : "신고 제출"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const FORMATION_LABEL: Record<string, string> = {
@@ -24,13 +102,24 @@ const RESULT_LABEL: Record<string, string> = {
   neutral: "-",
 };
 
-export default function RallyCard({ rally }: Props) {
+export default function RallyCard({ rally, jobId }: Props) {
   const [showShort, setShowShort] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reported, setReported] = useState(false);
   const { isBookmarked, toggle } = useBookmarkStore();
   const bookmarked = isBookmarked(rally.id);
   const duration = (rally.timestamp.end_sec - rally.timestamp.start_sec).toFixed(1);
 
   return (
+    <>
+    {showReport && (
+      <ReportModal
+        rallyId={rally.id}
+        jobId={jobId}
+        onClose={() => setShowReport(false)}
+        onDone={() => { setShowReport(false); setReported(true); }}
+      />
+    )}
     <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-brand-500/50 transition-colors">
       {/* 비디오 플레이어 */}
       {rally.clip_url ? (
@@ -75,6 +164,15 @@ export default function RallyCard({ rally }: Props) {
             >
               {bookmarked ? "★" : "☆"}
             </button>
+            <button
+              onClick={() => !reported && setShowReport(true)}
+              title={reported ? "신고 완료" : "오류 신고"}
+              className={`text-sm leading-none transition-colors ${
+                reported ? "text-gray-600 cursor-default" : "text-gray-600 hover:text-red-400"
+              }`}
+            >
+              {reported ? "🚩" : "⚑"}
+            </button>
           </div>
         </div>
 
@@ -103,5 +201,6 @@ export default function RallyCard({ rally }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }

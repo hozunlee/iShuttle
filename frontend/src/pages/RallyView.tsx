@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { useJobStore } from "../store/jobStore";
 import { useBookmarkStore } from "../store/bookmarkStore";
 import RallyCard from "../components/RallyCard";
@@ -7,6 +8,7 @@ import type { Rally } from "../types/api";
 type Filter = "all" | "us" | "them" | "bookmarked";
 
 export default function RallyView() {
+  const { jobId = "" } = useParams<{ jobId: string }>();
   const { result } = useJobStore();
   const { isBookmarked, count: bookmarkCount } = useBookmarkStore();
   const [filter, setFilter] = useState<Filter>("all");
@@ -53,7 +55,7 @@ export default function RallyView() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {rallies.map((rally) => (
-          <RallyCard key={rally.id} rally={rally} />
+          <RallyCard key={rally.id} rally={rally} jobId={jobId} />
         ))}
       </div>
 

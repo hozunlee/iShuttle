@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from api.analyze import router as analyze_router
 from api.results import router as results_router
 from api.feedback import router as feedback_router
+from api.report import router as report_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("ishuttle")
@@ -55,6 +56,7 @@ if os.path.exists("output"):
 app.include_router(analyze_router, prefix="/api")
 app.include_router(results_router, prefix="/api")
 app.include_router(feedback_router, prefix="/api")
+app.include_router(report_router, prefix="/api")
 
 # jobs / ws_subscribers를 라우터에 공유
 app.state.jobs = jobs
