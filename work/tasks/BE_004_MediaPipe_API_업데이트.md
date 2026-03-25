@@ -1,8 +1,9 @@
 # [BE_004] MediaPipe API 업데이트 — mp.solutions 제거 대응
 
-> 상태: TODO
+> 상태: DONE
 > 담당: BE
 > 생성: 2026-03-23
+> 완료: 2026-03-25
 
 ## 목표
 

@@ -52,12 +52,43 @@ def analyze_pose(video_path: str, rallies: list[dict]) -> dict:
         return _fallback_pose()
 
 
+def _get_model_path() -> str:
+    """pose_landmarker_lite.task 모델 파일 경로 반환. 없으면 자동 다운로드."""
+    import os
+    import urllib.request
+
+    models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
+    os.makedirs(models_dir, exist_ok=True)
+    model_path = os.path.join(models_dir, "pose_landmarker.task")
+
+    if not os.path.exists(model_path):
+        url = (
+            "https://storage.googleapis.com/mediapipe-models/"
+            "pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
+        )
+        logger.info(f"[pose] pose_landmarker.task 다운로드 중: {url}")
+        urllib.request.urlretrieve(url, model_path)
+        logger.info("[pose] 모델 다운로드 완료")
+
+    return model_path
+
+
 def _analyze_with_mediapipe(video_path: str, rallies: list[dict]) -> dict:
-    """MediaPipe Pose로 자세 분석"""
+    """MediaPipe Tasks API (0.10+)로 자세 분석"""
     import mediapipe as mp
     import cv2
+    from mediapipe.tasks import python as mp_tasks
+    from mediapipe.tasks.python import vision
 
-    mp_pose = mp.solutions.pose
+    model_path = _get_model_path()
+
+    base_options = mp_tasks.BaseOptions(model_asset_path=model_path)
+    options = vision.PoseLandmarkerOptions(
+        base_options=base_options,
+        num_poses=2,
+        output_segmentation_masks=False,
+    )
+
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
 
@@ -66,7 +97,7 @@ def _analyze_with_mediapipe(video_path: str, rallies: list[dict]) -> dict:
     knee_bends = []
     confidence_scores = []
 
-    with mp_pose.Pose(model_complexity=1, static_image_mode=False) as pose:
+    with vision.PoseLandmarker.create_from_options(options) as landmarker:
         for rally in rallies:
             # 랠리 중간 프레임 분석 (스윙 순간 근사)
             mid_sec = (rally["timestamp"]["start_sec"] + rally["timestamp"]["end_sec"]) / 2
@@ -78,16 +109,17 @@ def _analyze_with_mediapipe(video_path: str, rallies: list[dict]) -> dict:
                 continue
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = pose.process(frame_rgb)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+            result = landmarker.detect(mp_image)
 
-            if not results.pose_landmarks:
+            if not result.pose_landmarks:
                 continue
 
-            lm = results.pose_landmarks.landmark
+            # Tasks API: pose_landmarks[0] = 첫 번째 감지된 사람
+            lm = result.pose_landmarks[0]
 
-            # visibility 체크
-            key_landmarks = [LM_LEFT_SHOULDER, LM_RIGHT_SHOULDER, LM_LEFT_HIP, LM_RIGHT_HIP, LM_LEFT_KNEE, LM_RIGHT_KNEE]
-            visibilities = [lm[i].visibility for i in key_landmarks]
+            key_indices = [LM_LEFT_SHOULDER, LM_RIGHT_SHOULDER, LM_LEFT_HIP, LM_RIGHT_HIP, LM_LEFT_KNEE, LM_RIGHT_KNEE]
+            visibilities = [getattr(lm[i], "visibility", 1.0) or 1.0 for i in key_indices]
             min_vis = min(visibilities)
             confidence_scores.append(min_vis)
 
