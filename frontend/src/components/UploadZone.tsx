@@ -51,7 +51,7 @@ export default function UploadZone({ onFile, fileName }: Props) {
       ) : (
         <>
           <p className="text-gray-200 font-semibold text-lg">영상 파일을 드래그하거나 클릭하세요</p>
-          <p className="text-gray-400 text-sm mt-1">MP4, MOV, AVI — 1080p/30fps 권장</p>
+          <p className="text-gray-400 text-sm mt-1">MP4, MOV, AVI — 전체 게임 또는 구간 클립 모두 가능</p>
         </>
       )}
     </div>

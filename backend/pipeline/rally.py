@@ -379,7 +379,8 @@ def _optical_flow_fallback(video_path: str) -> list[tuple]:
 
 
 def _mock_rallies(video_path: str) -> list[dict]:
-    """TrackNetV3, 광학 플로우 모두 실패 시 mock 랠리 데이터 반환"""
+    """TrackNetV3, 광학 플로우 모두 실패 시 mock 랠리 데이터 반환.
+    짧은 클립(30초 미만)도 최소 1개 랠리 보장."""
     import cv2
 
     try:
@@ -391,6 +392,19 @@ def _mock_rallies(video_path: str) -> list[dict]:
         fps, total_duration = 30.0, 600.0
 
     logger.warning("[rally] mock 랠리 데이터 사용")
+
+    # 짧은 클립: 30초 미만이면 영상 전체를 1개 랠리로 처리
+    if total_duration < 30:
+        pad = min(1.0, total_duration * 0.05)
+        return [{
+            "id": 1,
+            "timestamp": {"start_sec": round(pad, 2), "end_sec": round(total_duration - pad, 2)},
+            "strokes": max(3, int(total_duration / 2)),
+            "result": "us",
+            "score_at_end": {"us": 1, "them": 0},
+            "phase": "phase1",
+            "detection_gaps": [],
+        }]
 
     rallies = []
     t = 5.0
@@ -417,5 +431,18 @@ def _mock_rallies(video_path: str) -> list[dict]:
 
         t += duration + 3.0
         rally_id += 1
+
+    # 생성된 랠리가 없으면 최소 1개 보장
+    if not rallies:
+        pad = min(2.0, total_duration * 0.05)
+        rallies.append({
+            "id": 1,
+            "timestamp": {"start_sec": round(pad, 2), "end_sec": round(total_duration - pad, 2)},
+            "strokes": max(3, int(total_duration / 2)),
+            "result": "us",
+            "score_at_end": {"us": 1, "them": 0},
+            "phase": "phase1",
+            "detection_gaps": [],
+        })
 
     return rallies
