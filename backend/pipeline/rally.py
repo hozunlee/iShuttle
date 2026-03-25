@@ -75,7 +75,7 @@ def _run_tracknet(video_path: str) -> list[tuple]:
     result = subprocess.run(
         [
             "python", tracknet_script,
-            "--video_file", os.path.abspath(video_path),
+            "--video_file", os.path.abspath(video_path).replace("\\", "/"),
             "--model_file", ckpt_file,
             "--save_dir", output_dir,
         ],
