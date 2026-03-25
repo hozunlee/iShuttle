@@ -12,13 +12,20 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
 
-_executor = ThreadPoolExecutor(max_workers=1)
+_executor = ThreadPoolExecutor(max_workers=1)   # 순차용 (heavy GPU 모델)
+_parallel_executor = ThreadPoolExecutor(max_workers=3)  # 경량 분석 병렬용
 
 
 async def _run_sync(fn, *args):
     """동기 CPU 블로킹 함수를 스레드 풀에서 실행 — 이벤트 루프 차단 방지"""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, partial(fn, *args))
+
+
+async def _run_parallel(fn, *args):
+    """경량 분석 함수를 병렬 스레드 풀에서 실행"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_parallel_executor, partial(fn, *args))
 
 logger = logging.getLogger("ishuttle.pipeline")
 
@@ -95,29 +102,27 @@ async def run_pipeline(
         logger.info(f"[pipeline] ④ editor 완료")
         await _push_progress(job_id, 70, "클립 편집 완료", jobs, ws_subscribers)
 
-        # ⑤-A 포메이션 분류
-        await _push_progress(job_id, 75, "포메이션 분류 중...", jobs, ws_subscribers)
+        # ⑤ formation + pose + heatmap 병렬 실행
+        await _push_progress(job_id, 75, "포메이션·자세·히트맵 분석 중...", jobs, ws_subscribers)
         from pipeline.formation import classify_all_formations
-        rallies_with_formation = await _run_sync(classify_all_formations, rallies_with_clips, player_tracks)
-        logger.info(f"[pipeline] ⑤-A formation 완료")
-
-        # ⑤-B 자세 분석
-        await _push_progress(job_id, 80, "자세 분석 중...", jobs, ws_subscribers)
         from pipeline.pose import analyze_pose
-        pose_summary = await _run_sync(analyze_pose, video_path, rallies_with_formation)
-        logger.info(f"[pipeline] ⑤-B pose 완료")
-        await _push_progress(job_id, 85, "자세 분석 완료", jobs, ws_subscribers)
-
-        # ⑤-C 히트맵 생성
-        await _push_progress(job_id, 87, "히트맵 생성 중...", jobs, ws_subscribers)
         from pipeline.heatmap import generate_heatmap
         import uuid as _uuid
+
         _heatmap_game_id = str(_uuid.uuid4())
-        heatmap_dir = f"output/heatmap"
+        heatmap_dir = "output/heatmap"
         os.makedirs(heatmap_dir, exist_ok=True)
         heatmap_path = f"{heatmap_dir}/{_heatmap_game_id}.png"
-        await _run_sync(generate_heatmap, player_tracks, court_data, heatmap_path)
+
+        rallies_with_formation, pose_summary, _ = await asyncio.gather(
+            _run_parallel(classify_all_formations, rallies_with_clips, player_tracks),
+            _run_parallel(analyze_pose, video_path, rallies_with_clips),
+            _run_parallel(generate_heatmap, player_tracks, court_data, heatmap_path),
+        )
+        logger.info(f"[pipeline] ⑤-A formation 완료")
+        logger.info(f"[pipeline] ⑤-B pose 완료")
         logger.info(f"[pipeline] ⑤-C heatmap 완료")
+        await _push_progress(job_id, 88, "분석 완료", jobs, ws_subscribers)
 
         # ⑥ AI 리포트 생성
         await _push_progress(job_id, 90, "AI 리포트 생성 중...", jobs, ws_subscribers)

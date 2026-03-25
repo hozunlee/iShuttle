@@ -313,7 +313,7 @@ def _calc_phase(us: int, them: int) -> str:
         return "phase1"
 
 
-OPTICAL_FLOW_STEP = 6  # 6프레임마다 1장 처리 (30fps 기준 5fps)
+OPTICAL_FLOW_STEP = 10  # 10프레임마다 1장 처리 (30fps 기준 3fps) — 속도 우선
 
 
 def _optical_flow_fallback(video_path: str) -> list[tuple]:
